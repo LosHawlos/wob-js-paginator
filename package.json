@@ -1,0 +1,6 @@
+{
+  "name": "wob-js-paginator",
+  "jspm": {
+    "main": "wob-js-paginator"
+  }
+}
