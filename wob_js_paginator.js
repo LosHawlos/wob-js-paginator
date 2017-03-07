@@ -7,9 +7,21 @@ $.fn.jsPaginator = function(){
 	this.pagesize = $(this).data('pagesize');
 	this.limitPager = parseInt( $(this).data('limit-pager'));
 	this.showFirstLast = parseInt( $(this).data('pager-show-first-last'));
+	this.useHash = parseInt( $(this).data('pager-use-hash'));
 	this.currentPage = 1;
 	this.numElements = 0;
 	this.numPages = 0;
+	
+	if( ! $('body').data('wob-js-paginators')) {
+		$('body').data('wob-js-paginators', []);
+	}
+	var hashIDs =  $('body').data('wob-js-paginators');
+	this.paginatorHashId = hashIDs.length;
+	this.loadedFromHash = false;
+	hashIDs.push( this.paginatorHashId + '=' + this.targetId);
+	$('body').data('wob-js-paginators', hashIDs);
+	//console.log($('body').data('wob-js-paginators'));
+	
 	
 	this.filters = {};
 
@@ -28,7 +40,7 @@ $.fn.jsPaginator = function(){
 	// console.log(filters);
 		this.filters = filters;
 		this.currentPage = 1;
-		this.update();
+		this.update( true);
 	};
 	
 	this.showPage = function( page) {
@@ -42,7 +54,7 @@ $.fn.jsPaginator = function(){
 		}
 		if( page > 0 && page <= this.numPages) {
 			this.currentPage = page;
-			this.update();
+			this.update(true);
 		}
 	};
 	
@@ -129,6 +141,8 @@ $.fn.jsPaginator = function(){
 	};
 	this.updatePaginator = function(){
 		this.children().each(function() {
+			$(this).blur(); // Remove Focus
+			$(this).children().blur(); // Remove Focus
 			if( typeof $(this).data('page') === 'string' && $(this).data('page').startsWith('-')) {
 				// Handle prev-Button (page as string)
 				if( paginator.currentPage + parseInt($(this).data('page')) >= 1) {
@@ -203,13 +217,95 @@ $.fn.jsPaginator = function(){
 			}
 		});
 	};
-	this.update = function(){
-		this.matchFilter();
-		this.updateList();
-		this.updatePaginator();
+	this.getHashObject = function() {
+		if( window.location.hash) {
+			// Try to parse current hash
+			var pattern = /#paginate:(.+)$/;
+			var m = pattern.exec( window.location.toString());
+			if( m && m[1]) {
+				var hashParams = m[1].split('&');
+				var hashData = {};
+				$.each( hashParams, function(idx,val){
+					var parts = val.match( /^([0-9]+)([^=]+)[=](.+)?$/);
+					var hashKey = parseInt(parts[1]);
+					var key = parts[2];
+					var val = parts[3];
+					if( typeof hashData[hashKey] === 'undefined') {
+						hashData[hashKey] = {p:null,f:{}};
+					}
+					if( key == 'p') {
+						hashData[hashKey].p = parseInt(val);
+					} else if( val) {
+						hashData[hashKey].f[key] = val.split(',');
+					} else {
+						hashData[hashKey].f[key] = [];
+					}
+				});
+				return hashData;
+			}
+		}
+		return {};
+	}
+	this.updateHash = function() {
+		var data = {p:this.currentPage,f:this.filters};
+		var hashData = this.getHashObject();
+		// Simply set the hash
+		hashData[this.paginatorHashId] = data;
+		var hashParams = [];
+		$.each( hashData, function(idx,data){
+			hashParams.push( idx+'p='+data.p);
+			$.each( data.f, function(key,values){
+				if( values.length) {
+					hashParams.push( idx+key+'='+(values.join(',')));
+				}
+			});
+		});
+		var hash = 'paginate:' + (hashParams.join('&'));
+		window.location.hash = hash;
+	}
+	
+	this.setFromHash = function(){
+		var hashData = this.getHashObject();
+		if( hashData[this.paginatorHashId]) {
+			var data = hashData[this.paginatorHashId];
+			if( data['f'] && data['p']) {
+				if( (this.currentPage != data.p) || (JSON.stringify( this.filters) != JSON.stringify( data.f))) {
+					// Data has changed
+					this.currentPage = data.p;
+					this.filters = data.f;
+					this.matchFilter();
+					this.updateList();
+					this.updatePaginator();
+					$(this).trigger( 'updatedFromHash', this.filters);
+					return true;
+				}
+			}
+		}
+	}
+	
+	
+	this.update = function( forceUpdate) {
+		if( forceUpdate || ! this.useHash) {
+			this.matchFilter();
+			this.updateList();
+			this.updatePaginator();
+		}
+		if( this.useHash) {
+			this.updateHash();
+		}
 	};
 	
-	this.update();
+	if( this.useHash) {
+		$( window ).on('hashchange', $.proxy(this.setFromHash,this));
+		if( this.setFromHash()) {
+			this.loadedFromHash = true;
+		} else {
+			this.update();
+		}
+	} else {
+		this.update();
+	}
+	
 	
 	this.getAvailableCriteria = function( criteria){
 		var list = [];
