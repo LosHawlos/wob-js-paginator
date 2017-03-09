@@ -102,6 +102,7 @@ $.fn.jsPaginator = function(){
 		}
 		return filterIsMatch;
 	};
+	
 	this.matchFilter = function() {
 		//console.log("matchFilter");
 		this.numElements = 0;
@@ -130,6 +131,7 @@ $.fn.jsPaginator = function(){
 		paginator.numPages = Math.ceil( paginator.numElements / paginator.pagesize);
 		//console.log(this.numElements);
 	};
+	
 	this.updateList = function(){
 		this.target.children().each(function(){
 			if( $(this).data('page') == paginator.currentPage && $(this).data('visible')) {
@@ -139,6 +141,7 @@ $.fn.jsPaginator = function(){
 			}
 		});
 	};
+	
 	this.updatePaginator = function(){
 		this.children().each(function() {
 			$(this).blur(); // Remove Focus
@@ -217,6 +220,7 @@ $.fn.jsPaginator = function(){
 			}
 		});
 	};
+	
 	this.getHashObject = function() {
 		if( window.location.hash) {
 			// Try to parse current hash
@@ -245,8 +249,12 @@ $.fn.jsPaginator = function(){
 			}
 		}
 		return {};
-	}
+	};
+	
 	this.updateHash = function() {
+		if( this.currentPage < 1) {
+			this.currentPage = 1;
+		}
 		var data = {p:this.currentPage,f:this.filters};
 		var hashData = this.getHashObject();
 		// Simply set the hash
@@ -262,7 +270,7 @@ $.fn.jsPaginator = function(){
 		});
 		var hash = 'paginate:' + (hashParams.join('&'));
 		window.location.hash = hash;
-	}
+	};
 	
 	this.setFromHash = function(){
 		var hashData = this.getHashObject();
@@ -279,10 +287,21 @@ $.fn.jsPaginator = function(){
 					$(this).trigger( 'updatedFromHash', this.filters);
 					return true;
 				}
+			} else if( data['p']) {
+				if( (this.currentPage != data.p)) {
+					// Page has changed
+					this.currentPage = data.p;
+					this.filters = {};
+					this.matchFilter();
+					this.updateList();
+					this.updatePaginator();
+					$(this).trigger( 'updatedFromHash', this.filters);
+					return true;
+				}
 			}
 		}
-	}
-	
+		return false;
+	};
 	
 	this.update = function( forceUpdate) {
 		if( forceUpdate || ! this.useHash) {
@@ -300,7 +319,7 @@ $.fn.jsPaginator = function(){
 		if( this.setFromHash()) {
 			this.loadedFromHash = true;
 		} else {
-			this.update();
+			this.update( true);
 		}
 	} else {
 		this.update();
