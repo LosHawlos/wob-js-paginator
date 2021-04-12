@@ -3,5 +3,5 @@
   "jspm": {
     "main": "wob_js_paginator"
   },
-  "version":"0.5"
+  "version":"0.5.0"
 }
