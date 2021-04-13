@@ -4,5 +4,8 @@
     "main": "wob_js_paginator"
   },
   "main": "wob_js_paginator",
-  "version":"0.5.2"
+  "version":"0.5.2",
+  "peerDependencies": {
+    "jquery": ">=1.8.0"
+  }
 }
